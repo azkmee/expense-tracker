@@ -2,7 +2,7 @@
 
 This code is meant for the google app script. You can access it via Google Sheet > Tools > Script Editor.
 
-You will need to set up your own expense tracker:
+You will need to do these to set up your own expense tracker:
 1. Create your own bot and get the token API
 2. Webappurl link - you will get this when you publish the webapp in Script Editor
 3. Link to google sheet that you will be storing your expenses. This is the google sheet you use to get into Script Editor
