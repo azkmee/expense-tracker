@@ -1,4 +1,4 @@
-# expense-tracker
+# Telegram Google Sheet Expense Tracker
 
 This code is meant for the google app script. You can access it via Google Sheet > Tools > Script Editor.
 
