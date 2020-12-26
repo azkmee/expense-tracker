@@ -1,0 +1,160 @@
+var token = <insert your Telegram API token here>; 
+var telegramUrl = "https://api.telegram.org/bot" + token;
+var webAppUrl = "<webappurl of your google script here>"
+
+var ssId = "xxxxxxxxxxxxxx"; // words in x of your google sheet link spreadsheets/d/xxxxxxxxxxxxxx/edit#gid=0     
+
+function getMe() {
+  var url = telegramUrl + "/getMe";
+  var response = UrlFetchApp.fetch(url);
+  Logger.log(response.getContentText());
+}
+
+function setWebhook() {
+  var url = telegramUrl + "/setWebhook?url=" + webAppUrl;
+  var response = UrlFetchApp.fetch(url);
+  Logger.log(response.getContentText());
+}
+
+function sendMessage(id, text, keyBoard){
+  var data = {
+    method: "post",
+    payload:{
+      method:"sendMessage",
+      chat_id:String(id),
+      text:text,
+      parse_mode:'markdown',
+      reply_markup: JSON.stringify(keyBoard)
+    }
+  };
+  UrlFetchApp.fetch(telegramUrl + '/', data);  
+}
+
+function sendText(id,text) {
+  var data = {
+    method: "post",
+    payload:{
+      method:"sendMessage",
+      chat_id:String(id),
+      text:text,
+      parse_mode:'markdown',
+    }
+  };
+  
+  UrlFetchApp.fetch(telegramUrl + '/', data);
+}
+
+function doGet(e) {
+  return HtmlService.createHtmlOutput("Hi there" + JSON.stringify(e));
+}
+
+function doPost(e) {
+  var sheet = SpreadsheetApp.openById(ssId)
+  var contents = JSON.parse(e.postData.contents);
+  
+  var today = new Date();
+  var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+  var yyyy = today.getFullYear();
+  //  var dd = String(today.getDate()).padStart(2, '0');
+  
+  #reference to the cell location on google sheet
+  var mode_loc = 'G1'
+  var month_loc = 'H2'
+  var year_loc = 'I2'
+  var balance_loc = 'J4:J8'
+  
+  //check if its a call back 
+  if(contents.hasOwnProperty('callback_query')){
+    var text = contents.callback_query.data
+    var id =  contents.callback_query.message.chat.id
+    
+    var log_type = text.split("-")
+    
+    //set type of log
+    if(log_type.length==2){
+      sheet.getRange(mode_loc).setValue(log_type[1]) 
+
+    }
+    //get balance
+    else {
+      //update this month
+      sheet.getRange(month_loc).setValue(mm)
+      sheet.getRange(year_loc).setValue(yyyy)
+      
+      var balances = sheet.getRange(balance_loc).getDisplayValues()
+     
+      var meal_bal = balances[0]
+      var fashion_bal = balances[1]
+      var donation_bal = balances[2]
+      var bike_bal = balances[3]
+      var misc_bal = balances[4]
+      
+      var output = 'Your balance for ' + mm +'/' + yyyy + ':' +
+        '\nMeal: ' + meal_bal +
+        '\nFashion: ' + fashion_bal +
+        '\nDonation: ' + donation_bal + 
+        '\nBike: ' + bike_bal +
+        '\nMisc: '+ misc_bal
+      
+        sendText(id, output)
+    }
+
+  }
+  
+  //if not a call back
+  else{
+    var text = contents.message.text;
+    var text_arr = text.split("!");
+    var id = contents.message.from.id;
+    var name = contents.message.from.first_name;
+    var mode = sheet.getRange(mode_loc).getDisplayValue();
+
+    
+    if(text_arr.length==2){
+      sendText(id, "Logging " + text_arr[1] + ' as ' + mode + ' for ' + text_arr[0]);
+      sheet.appendRow([mm, yyyy, mode, text_arr[0], text_arr[1]]);
+    }
+    
+    else {
+      sendText(id, "*Wrong format*\n\nAccepting entries in this format: \n*{cost}!{description}*")
+    }
+  }
+  //prepare to return
+  var mode = sheet.getRange(mode_loc).getDisplayValue();
+
+  var keyBoard = {
+    "inline_keyboard":[
+      //###################################
+      [{
+        "text":"Meal",
+        "callback_data":"log-Meal"
+      },
+      {
+        'text':'Misc',
+        'callback_data':'log-Misc'
+      },
+      {
+        'text':'Bike',
+        'callback_data':'log-Bike'
+      }],
+      //###################################
+      [{
+        'text':'Fashion',
+        'callback_data':'log-Fashion'
+      },
+      {
+        'text':'Donation',
+        'callback_data':'log-Donation'
+      }],
+      //##################################
+      [{
+        'text':'Get Balance',
+        'callback_data':'Balance'
+      }],
+      //###################################
+      ]
+    }
+  var output_text = "You are logging for *" + mode + 
+     "*\nClick on a different mode to change"
+  return sendMessage(id, output_text, keyBoard);  
+}
